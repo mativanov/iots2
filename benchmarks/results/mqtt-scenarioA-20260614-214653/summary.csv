@@ -1,0 +1,10 @@
+﻿scenario,qos,loss_sample_n,loss_pct,throughput_msgs,devices,broker,stored
+A,0,2000,0,,100,mqtt,2000
+A,0,2000,0,,1000,mqtt,2000
+A,0,2000,0,,10000,mqtt,2000
+A,1,2000,0,,100,mqtt,2000
+A,1,2000,0,,1000,mqtt,2000
+A,1,2000,0,,10000,mqtt,2000
+A,2,2000,0,,100,mqtt,2000
+A,2,2000,0,,1000,mqtt,2000
+A,2,2000,0,,10000,mqtt,2000

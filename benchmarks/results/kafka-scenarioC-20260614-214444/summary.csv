@@ -1,0 +1,2 @@
+﻿broker,scenario,recovery_sec,baseline_rate,burst_seconds,burst_rate
+kafka,C,3,2,50,5,5000

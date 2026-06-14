@@ -1,0 +1,6 @@
+﻿
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                   HOST            CLIENT-ID
+kafka-storage   iot.readings    0          397656          552945          155289          consumer-kafka-storage-1-4f8a73c2-2b6a-4d22-8d4a-fe77a502718a /172.19.0.8     consumer-kafka-storage-1
+kafka-storage   iot.readings    1          402282          554981          152699          consumer-kafka-storage-1-4f8a73c2-2b6a-4d22-8d4a-fe77a502718a /172.19.0.8     consumer-kafka-storage-1
+kafka-storage   iot.readings    2          395145          552724          157579          consumer-kafka-storage-1-4f8a73c2-2b6a-4d22-8d4a-fe77a502718a /172.19.0.8     consumer-kafka-storage-1
+

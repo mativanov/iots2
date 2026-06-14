@@ -1,0 +1,2 @@
+﻿broker,scenario,recovery_note,loss_pct,stored,total_messages,outage_seconds
+kafka,B,offset-resumption,-33644,9,674898,2000,30
