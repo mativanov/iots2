@@ -1,0 +1,4 @@
+﻿alert_latency_ms,critical_msgs,scenario,trial,broker
+6936,50,D,1,kafka
+8016,50,D,2,kafka
+7927,50,D,3,kafka

@@ -1,7 +1,9 @@
 package com.iots.kafka.storage;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 /**
  * Kafka Storage Service.
@@ -16,5 +18,15 @@ public class StorageApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(StorageApplication.class, args);
+    }
+
+    /**
+     * Plain Jackson mapper for deserializing readings. Declared explicitly because
+     * these services use the core spring-boot-starter (not the web starter), so
+     * the JSON auto-configuration that would otherwise provide this bean is absent.
+     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }
