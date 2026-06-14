@@ -111,7 +111,12 @@ async function main() {
     user: process.env.POSTGRES_USER || "iotuser",
     password: process.env.POSTGRES_PASSWORD || "iotpass"
   });
-  const client = mqtt.connect(mqttUrl);
+  const client = mqtt.connect(mqttUrl, {
+    clientId: "mqtt-storage-service",  // Stable ID for persistent session
+    clean: false,  // Persistent session - broker queues messages during disconnect
+    reconnectPeriod: 1000,
+    connectTimeout: 30000
+  });
   let buffer = [];
   let flushing = false;
   let flushAgain = false;

@@ -55,7 +55,12 @@ function main() {
   const alertThreshold = readNumberEnv("ALERT_THRESHOLD", 50);
   const windowSeconds = readIntegerEnv("WINDOW_SECONDS", 10, { min: 1 });
   const windowMs = windowSeconds * 1000;
-  const client = mqtt.connect(mqttUrl);
+  const client = mqtt.connect(mqttUrl, {
+    clientId: "mqtt-analytics-service",  // Stable ID for persistent session
+    clean: false,  // Persistent session - broker queues messages during disconnect
+    reconnectPeriod: 1000,
+    connectTimeout: 30000
+  });
   let windowStart = Date.now();
   let messageCount = 0;
   let temperatureSum = 0;

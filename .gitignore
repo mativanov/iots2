@@ -32,3 +32,4 @@ benchmarks/results/*.json
 benchmarks/results/*.log
 benchmarks/results/*.txt
 !benchmarks/results/README.md
+nul

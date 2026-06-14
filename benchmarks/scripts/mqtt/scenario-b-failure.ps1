@@ -58,11 +58,11 @@ try {
             loss_pct       = $lossPct
         })
         Write-Host "  -> qos=$qos stored=$stored/$TotalMessages loss=$lossPct%"
-        & docker rm -f $ingestion 2>$null | Out-Null
+        & docker rm -f $ingestion 2>&1 | Out-Null
     }
 }
 finally {
     Stop-StatsSampler -Job $statsJob
-    & docker rm -f $ingestion 2>$null | Out-Null
+    & docker rm -f $ingestion 2>&1 | Out-Null
     Write-Host "`nScenario B (MQTT) done. Results: $run"
 }

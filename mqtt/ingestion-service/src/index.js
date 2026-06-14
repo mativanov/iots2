@@ -56,7 +56,12 @@ function delay(milliseconds) {
 
 function connectMqtt(mqttUrl) {
   return new Promise((resolve, reject) => {
-    const client = mqtt.connect(mqttUrl);
+    const client = mqtt.connect(mqttUrl, {
+      clientId: `mqtt-ingestion-${process.pid}`,
+      clean: false,  // Persistent session for QoS 1/2 recovery
+      reconnectPeriod: 1000,
+      connectTimeout: 30000
+    });
 
     client.once("connect", () => resolve(client));
     client.once("error", reject);

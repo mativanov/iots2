@@ -1,0 +1,3 @@
+﻿broker,scenario,qos,stored,total_messages,loss_pct,outage_seconds
+mqtt,B,0,225,2000,88,75,30
+mqtt,B,2,227,2000,88,65,30

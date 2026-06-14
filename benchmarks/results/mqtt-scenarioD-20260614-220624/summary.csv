@@ -1,0 +1,6 @@
+﻿qos,scenario,trial,alert_latency_ms,broker
+1,D,1,3450,mqtt
+1,D,2,6286,mqtt
+1,D,3,7766,mqtt
+1,D,4,8223,mqtt
+1,D,5,7958,mqtt

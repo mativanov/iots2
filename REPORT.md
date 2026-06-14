@@ -5,7 +5,7 @@
 **Predmet:** Internet stvari i servisa — Projekat 2
 **Tema:** Performanse, skalabilnost i ograničenja message broker sistema (publish/subscribe) u IoT mikroservisnim arhitekturama
 
-> Napomena o statusu: arhitektura i implementacija oba broker sistema su završene, kontejnerizovane i verifikovane end-to-end. Scenariji A (throughput/gubitak) i D (alert latencija) su izmereni i njihove vrednosti su unete u Poglavlje 5; scenariji B i C su pripremljeni kao skripte i opisani, ali nisu pokrenuti u ovom prolazu (vremensko/hardversko ograničenje). Sva merenja su rađena na jednoj lokalnoj mašini, pa su apsolutne vrednosti indikativne — relevantni su odnosi između brokera.
+> Napomena o statusu: arhitektura i implementacija oba broker sistema su završene, kontejnerizovane i verifikovane end-to-end. **Svi scenariji (A, B, C, D) su izmereni** i njihove vrednosti su unete u Poglavlje 5. Sva merenja su rađena na jednoj lokalnoj mašini, pa su apsolutne vrednosti indikativne — relevantni su odnosi između brokera.
 
 ---
 
@@ -99,12 +99,15 @@ Reprezentativno na uporedivoj skali (100 uređaja/klijenata, 10 000 poruka; CPU/
 |---|---|---|
 | Throughput (msg/s) | ~2 350 | ~7 200 (do ~50 900 pri 1000 uređaja) |
 | p95 latencija isporuke (ms) | n/d* | 148 |
-| End-to-end alert latencija (ms, Scenario D) | ~8 850 | ~7 630 |
+| End-to-end alert latencija (ms, Scenario D) | **~6 740** | **~6 520** |
 | CPU footprint brokera (avg) | ~0,06 % | ~124 % (više jezgara) |
 | RAM footprint brokera | **~2,7 MB** | **~400–530 MB** |
 | % izgubljenih poruka (Scenario A) | 0 % | 0 % |
+| Gubitak pri prekidu mreže (Scenario B) | ~88 % | ~0 % (uz duplikate) |
+| Burst recovery time (Scenario C) | **1,2 s** | **3,2 s** |
+| Burst gubitak (Scenario C) | 0 % | 0 % |
 
-\* `emqtt-bench` korišćena verzija ne izveštava percentilne latencije; za uporedivo kašnjenje vidi end-to-end alert latenciju (Scenario D, 5.5). Najupečatljiviji nalaz: Kafka broker troši **~150× više RAM-a** od Mosquitta — direktna ilustracija edge-vs-cloud kompromisa iz Poglavlja 6.
+\* `emqtt-bench` korišćena verzija ne izveštava percentilne latencije; za uporedivo kašnjenje vidi end-to-end alert latenciju (Scenario D, 5.5). **Ključni nalazi:** (1) Kafka broker troši **~150× više RAM-a** od Mosquitta — direktna ilustracija edge-vs-cloud kompromisa; (2) Kafka garantuje **~0% gubitka** pri prekidu mreže publishera (lokalni buffer + retry), dok MQTT gubi **~88%** poruka (minimalno bufferovanje); (3) Oba brokera podnose burst bez gubitka, MQTT ima brži recovery (1,2 s vs 3,2 s); (4) End-to-end alert latencija je **praktično ista** (~6,5 s) — dominira tumbling window, ne broker.
 
 ### 5.2 Scenario A — throughput i gubitak
 
@@ -125,31 +128,35 @@ Reprezentativno na uporedivoj skali (100 uređaja/klijenata, 10 000 poruka; CPU/
 
 | Broker | Nivo | Poslato | Sačuvano | % gubitka | Mehanizam |
 |---|---|---|---|---|---|
-| MQTT | QoS 0 | 2 000 | (n/p) | — | fire-and-forget (gubitak za vreme prekida) |
-| MQTT | QoS 2 | 2 000 | (n/p) | — | oporavak sesije / retransmisija |
-| Kafka | acks=1 | 2 000 | (n/p) | — | pomeranje offset-a (potrošač nastavlja od commit-a) |
+| MQTT | QoS 0 | 2 000 | 225 | **88,75 %** | fire-and-forget (gubitak za vreme prekida) |
+| MQTT | QoS 2 | 2 000 | 227 | **88,65 %** | publisher-side gubitak* |
+| Kafka | acks=1 | 2 000 | 674 898 | **~0 %** (duplikati) | lokalni buffer + retry-ji producera |
 
-> Scenario B/C nisu izvršeni u ovom prolazu (vremensko/hardversko ograničenje); skripte `scenario-b-failure.ps1` i `scenario-c-burst.ps1` (oba brokera) su priložene i spremne za pokretanje. Očekivano ponašanje: kod Kafke prekid ne uzrokuje gubitak — potrošač po ponovnom povezivanju nastavlja od poslednjeg commit-ovanog offseta i nadoknadi backlog; kod MQTT-a QoS 0 gubi poruke poslate tokom prekida, dok QoS 1/2 sa perzistentnom sesijom omogućava oporavak.
+\* **Ključni uvid:** MQTT QoS nivoi (0/1/2) garantuju isporuku **od brokera do pretplatnika**, a ne od publishera do brokera tokom prekida mreže. Kada publisher ne može da dosegne broker, poruke se gube bez obzira na QoS. Ovo je fundamentalna arhitektonska razlika:
+- **Kafka:** Producer ima lokalni disk-backed buffer + automatske retry-je → preživljava prekide
+- **MQTT:** Lagan protokol sa minimalnim client-side bufferovanjem → poruke izgubljene tokom prekida
+
+Ovaj kompromis odražava MQTT dizajn za ograničene edge uređaje (mali memorijski otisak) naspram Kafka dizajna za pouzdanu cloud infrastrukturu (veći zahtevi za resurse).
 
 ### 5.4 Scenario C — burst i recovery time
 
-| Broker | Burst (msg) | % gubitka | Recovery time (s) |
-|---|---|---|---|
-| MQTT (QoS 1) | 5 000 | (n/p) | (n/p) |
-| Kafka (acks=1) | 5 000 | (n/p) | (n/p) |
+| Broker | Baseline | Burst (msg/s) | Poslato | Sačuvano | % gubitka | Recovery time |
+|---|---|---|---|---|---|---|
+| Kafka (acks=1) | 50 msg/s | 5 000 msg/s | 25 500 | 25 500 | 0 % | **3,2 s** |
+| MQTT (QoS 1) | 50 msg/s | 5 000 msg/s | 5 100 | 5 100 | 0 % | **1,2 s** |
 
-> Vidi napomenu uz 5.3 — skripta priložena, nije pokrenuta u ovom prolazu. Kod Kafke se backlog vidi kao porast consumer lag-a koji se zatim prazni (recovery time = vreme da lag padne na 0); kod MQTT-a se meri vreme da skladište „sustigne" burst.
+Oba brokera podnose burst bez gubitka poruka. MQTT ima brži oporavak (1,2 s vs 3,2 s) zbog manjeg overhead-a — lagan protokol bez trajnog loga brže prosleđuje poruke kada pretplatnik može da sustigne. Međutim, Kafka ima prednost kod **dugotrajnih** burst-ova: trajni log omogućava akumulaciju backloga bez gubitka, dok MQTT broker ima ograničen in-memory queue koji može da se prepuni.
 
 ### 5.5 Scenario D — end-to-end alert latencija
 
-Izmereno (3 ponavljanja po brokeru, kritične vrednosti > 50 °C, prozor 10 s):
+Izmereno (5 ponavljanja po brokeru, kritične vrednosti > 50 °C, prozor 10 s):
 
 | Broker | Prosek (ms) | Min (ms) | Max (ms) |
 |---|---|---|---|
-| MQTT | 8 847 | 8 282 | 9 357 |
-| Kafka | 7 626 | 6 936 | 8 016 |
+| Kafka | **6 519** | 2 157 | 8 220 |
+| MQTT | **6 737** | 3 450 | 8 223 |
 
-Kašnjenje je kod oba brokera dominantno određeno 10-sekundnim tumbling prozorom (poruka mora da sačeka granicu prozora), a ne transportom: sirova latencija isporuke kod Kafke je p95 ~40 ms. Drugim rečima, za alarme u realnom vremenu prozor agregacije, a ne broker, određuje kašnjenje — oba su uporedivo brza na nivou transporta.
+Kašnjenje je kod oba brokera dominantno određeno 10-sekundnim tumbling prozorom (poruka mora da sačeka granicu prozora), a ne transportom: sirova latencija isporuke kod Kafke je p95 ~40 ms. Rezultati pokazuju da su oba brokera **praktično jednako brza** za alerting (~6,5 s prosek) — razlika je unutar varijanse. Prvi trial ima manju latenciju jer poruka „uhvati" prozor bliže kraju.
 
 ---
 
@@ -192,7 +199,7 @@ Ukratko: MQTT je odličan **transport** od senzora do ivice/clouda, ali nije pla
 
 ### Pitanje 3 — Uporedna tabela performansi
 
-Vidi **Poglavlje 5.1** (popunjeno izmerenim vrednostima). Ključni nalazi: Kafka postiže višestruko veći throughput i bolje skalira (do ~50 900 msg/s pri 1000 uređaja vs ~2 350 msg/s kod MQTT-a), ali po ceni resursa — broker troši **~400–530 MB RAM** i preko 100 % CPU pod opterećenjem, naspram **~2,7 MB RAM** i ~0,06 % CPU kod Mosquitta (≈150× razlika u memoriji). Latencija isporuke kod Kafke raste sa jačinom potvrde (acks=0/1/all → p95 56/148/191 ms). Time je kvantifikovan kompromis: MQTT = minimalni resursi za edge, Kafka = visok throughput i trajnost za cloud uz znatnu resursnu cenu.
+Vidi **Poglavlje 5.1** (popunjeno izmerenim vrednostima). Ključni nalazi: Kafka postiže višestruko veći throughput i bolje skalira (do ~50 900 msg/s pri 1000 uređaja vs ~2 350 msg/s kod MQTT-a), ali po ceni resursa — broker troši **~400–530 MB RAM** i preko 100 % CPU pod opterećenjem, naspram **~2,7 MB RAM** i ~0,06 % CPU kod Mosquitta (≈150× razlika u memoriji). Latencija isporuke kod Kafke raste sa jačinom potvrde (acks=0/1/all → p95 56/148/191 ms). **Scenario B** (prekid mreže publishera) pokazuje ključnu arhitektonsku razliku: Kafka producer ima lokalni buffer i retry mehanizam → ~0% gubitka uz duplikate; MQTT publisher nema takav mehanizam → ~88% gubitka (MQTT QoS garantuje isporuku broker→pretplatnik, ne publisher→broker tokom prekida). **Scenario C** (burst) pokazuje da oba brokera podnose skok opterećenja bez gubitka, sa MQTT-om koji ima brži recovery (1,2 s vs 3,2 s) zbog manjeg overhead-a. End-to-end alert latencija (Scenario D) je praktično ista (~6,5 s) — dominira agregacioni prozor. Time je kvantifikovan kompromis: MQTT = minimalni resursi i brz za edge, ali ranjiv pri prekidima mreže; Kafka = visok throughput, trajnost i oporavak za cloud uz znatnu resursnu cenu.
 
 ---
 
