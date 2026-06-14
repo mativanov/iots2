@@ -2,7 +2,7 @@
 
 This repository contains the foundation for a university project comparing MQTT and Kafka as event brokers for IoT sensor-reading workloads.
 
-At this stage, the project includes infrastructure, shared contracts, sample-data tooling, and a working MQTT flow. Kafka application services, REST APIs, dashboards, and benchmark automation are not implemented yet.
+At this stage, the project includes infrastructure, shared contracts, sample-data tooling, a working MQTT flow (Node.js), and a working Kafka flow (Java / Spring Boot). The two broker pipelines deliberately use different technologies, as required by the project specification. Benchmark automation, dashboards, and the final report are still to come.
 
 ## Objective
 
@@ -104,13 +104,13 @@ The MQTT topic used by the implemented services is:
 iot/readings
 ```
 
-The Kafka topic planned for later application logic is:
+The Kafka topic used by the implemented Kafka services is:
 
 ```text
-iot-readings
+iot.readings
 ```
 
-The topic is not required by the current skeleton, but Kafka is configured with topic auto-creation enabled for future experiments.
+The storage service declares this topic with multiple partitions (default 3) on startup so partitioning and consumer-lag behavior can be exercised. Auto-creation is also enabled as a fallback.
 
 ## Startup Instructions
 
@@ -214,6 +214,63 @@ The MQTT vertical slice is working when:
 - `mqtt-storage-service` logs successful batch inserts.
 - `mqtt-analytics-service` logs window summaries with message count and average temperature.
 - PostgreSQL shows `broker_type = mqtt` rows grouped under `qos-0`, `qos-1`, and `qos-2` after the three QoS ingestion runs.
+
+## Kafka Flow
+
+The Kafka services are written in Java with Spring Boot (a different technology stack from the Node.js MQTT services, per the specification) and produce the exact same JSON message format, so they share the `sensor_readings` table and the `broker_type = 'kafka'` label.
+
+Start PostgreSQL, Kafka, Kafka storage, and Kafka analytics. Start storage first so the topic is created with multiple partitions before any data arrives:
+
+```bash
+docker compose up -d postgres kafka kafka-storage-service kafka-analytics-service
+```
+
+Run the Kafka ingestion service once (publishes `TOTAL_MESSAGES` events, then exits):
+
+```bash
+docker compose run --rm kafka-ingestion-service
+```
+
+Useful ingestion controls (mirror the MQTT ones):
+
+```bash
+docker compose run --rm -e TOTAL_MESSAGES=1000 -e MESSAGES_PER_SECOND=50 -e DEVICE_COUNT=100 kafka-ingestion-service
+```
+
+### Kafka Verification (acks levels)
+
+The producer's acknowledgement level is set with `KAFKA_ACKS` and is carried as a message header, so the storage service records it as `delivery_mode` (`acks-0` / `acks-1` / `acks-all`):
+
+```bash
+docker compose run --rm -e KAFKA_ACKS=0   -e TOTAL_MESSAGES=100 kafka-ingestion-service
+docker compose run --rm -e KAFKA_ACKS=1   -e TOTAL_MESSAGES=100 kafka-ingestion-service
+docker compose run --rm -e KAFKA_ACKS=all -e TOTAL_MESSAGES=100 kafka-ingestion-service
+```
+
+Check PostgreSQL counts grouped by broker and delivery mode (shows both MQTT and Kafka rows side by side):
+
+```bash
+docker compose exec postgres psql -U iotuser -d iotdb -c "SELECT broker_type, delivery_mode, COUNT(*) FROM sensor_readings GROUP BY broker_type, delivery_mode ORDER BY broker_type, delivery_mode;"
+```
+
+Inspect recent Kafka storage and analytics logs:
+
+```bash
+docker compose logs kafka-storage-service --tail=50
+docker compose logs kafka-analytics-service --tail=50
+```
+
+Inspect consumer-group lag and partition assignment:
+
+```bash
+docker compose exec kafka kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group kafka-storage
+```
+
+The Kafka vertical slice is working when:
+
+- `kafka-storage-service` logs successful batch inserts.
+- `kafka-analytics-service` logs window summaries with message count and average temperature (and `ALERT` lines when the average exceeds the threshold).
+- PostgreSQL shows `broker_type = kafka` rows grouped under `acks-0`, `acks-1`, and `acks-all` after the three acks ingestion runs.
 
 ## Verification
 

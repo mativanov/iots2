@@ -1,0 +1,6 @@
+com\iots\kafka\storage\StoredReading.class
+com\iots\kafka\storage\KafkaStorageConsumer.class
+com\iots\kafka\storage\SensorReading.class
+com\iots\kafka\storage\KafkaTopicConfig.class
+com\iots\kafka\storage\StorageApplication.class
+com\iots\kafka\storage\SensorReadingRepository.class

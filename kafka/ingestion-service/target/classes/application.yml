@@ -1,0 +1,25 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:kafka:9092}
+    producer:
+      acks: ${KAFKA_ACKS:all}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        # Make delivery semantics explicit per the benchmark configuration.
+        enable.idempotence: false
+
+ingestion:
+  topic: ${KAFKA_TOPIC:iot.readings}
+  acks: ${KAFKA_ACKS:all}
+  total-messages: ${TOTAL_MESSAGES:100}
+  messages-per-second: ${MESSAGES_PER_SECOND:10}
+  device-count: ${DEVICE_COUNT:10}
+  dataset-path: ${DATASET_PATH:/app/sample-data/Smart_Farming_Crop_Yield_2024.csv}
+
+logging:
+  level:
+    org.apache.kafka: WARN

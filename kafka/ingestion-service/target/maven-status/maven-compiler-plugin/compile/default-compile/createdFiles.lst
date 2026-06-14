@@ -1,0 +1,6 @@
+com\iots\kafka\ingestion\IngestionApplication.class
+com\iots\kafka\ingestion\CsvDatasetLoader.class
+com\iots\kafka\ingestion\EventGenerator.class
+com\iots\kafka\ingestion\SensorReading.class
+com\iots\kafka\ingestion\KafkaIngestionRunner.class
+com\iots\kafka\ingestion\DatasetRecord.class

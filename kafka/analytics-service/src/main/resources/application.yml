@@ -1,0 +1,22 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:kafka:9092}
+    consumer:
+      # Distinct group from storage so analytics receives its own copy of every
+      # message (publish/subscribe fan-out). 'latest' keeps it on live data.
+      group-id: ${KAFKA_GROUP_ID:kafka-analytics}
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:latest}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+analytics:
+  topic: ${KAFKA_TOPIC:iot.readings}
+  alert-threshold: ${ALERT_THRESHOLD:50}
+  window-seconds: ${WINDOW_SECONDS:10}
+
+logging:
+  level:
+    org.apache.kafka: WARN

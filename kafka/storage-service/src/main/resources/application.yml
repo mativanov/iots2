@@ -1,0 +1,33 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:kafka:9092}
+    consumer:
+      group-id: ${KAFKA_GROUP_ID:kafka-storage}
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:earliest}
+      enable-auto-commit: false
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:500}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      # Batch mode hands the listener a whole poll() at once, so we batch-insert
+      # into PostgreSQL and only commit offsets after a successful write.
+      type: batch
+      ack-mode: BATCH
+      concurrency: ${KAFKA_CONCURRENCY:1}
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:iotdb}
+    username: ${POSTGRES_USER:iotuser}
+    password: ${POSTGRES_PASSWORD:iotpass}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+
+storage:
+  topic: ${KAFKA_TOPIC:iot.readings}
+  partitions: ${KAFKA_PARTITIONS:3}
+
+logging:
+  level:
+    org.apache.kafka: WARN

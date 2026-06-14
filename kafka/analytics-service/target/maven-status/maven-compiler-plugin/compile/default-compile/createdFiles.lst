@@ -1,0 +1,3 @@
+com\iots\kafka\analytics\AnalyticsApplication.class
+com\iots\kafka\analytics\SensorReading.class
+com\iots\kafka\analytics\TumblingWindowAnalytics.class

@@ -114,6 +114,66 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  kafka-ingestion-service:
+    build:
+      context: .
+      dockerfile: kafka/ingestion-service/Dockerfile
+    container_name: kafka-ingestion-service
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-iot.readings}
+      KAFKA_ACKS: ${KAFKA_ACKS:-all}
+      TOTAL_MESSAGES: ${TOTAL_MESSAGES:-100}
+      MESSAGES_PER_SECOND: ${MESSAGES_PER_SECOND:-10}
+      DEVICE_COUNT: ${DEVICE_COUNT:-10}
+      DATASET_PATH: ${KAFKA_DATASET_PATH:-/app/sample-data/Smart_Farming_Crop_Yield_2024.csv}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+
+  kafka-storage-service:
+    build:
+      context: .
+      dockerfile: kafka/storage-service/Dockerfile
+    container_name: kafka-storage-service
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-iot.readings}
+      KAFKA_GROUP_ID: ${KAFKA_STORAGE_GROUP_ID:-kafka-storage}
+      KAFKA_PARTITIONS: ${KAFKA_PARTITIONS:-3}
+      KAFKA_MAX_POLL_RECORDS: ${KAFKA_MAX_POLL_RECORDS:-500}
+      KAFKA_CONCURRENCY: ${KAFKA_CONCURRENCY:-1}
+      KAFKA_AUTO_OFFSET_RESET: ${KAFKA_AUTO_OFFSET_RESET:-earliest}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: iotdb
+      POSTGRES_USER: iotuser
+      POSTGRES_PASSWORD: iotpass
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  kafka-analytics-service:
+    build:
+      context: .
+      dockerfile: kafka/analytics-service/Dockerfile
+    container_name: kafka-analytics-service
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-iot.readings}
+      KAFKA_GROUP_ID: ${KAFKA_ANALYTICS_GROUP_ID:-kafka-analytics}
+      KAFKA_AUTO_OFFSET_RESET: ${KAFKA_ANALYTICS_OFFSET_RESET:-latest}
+      ALERT_THRESHOLD: ${ALERT_THRESHOLD:-50}
+      WINDOW_SECONDS: ${WINDOW_SECONDS:-10}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   mosquitto_data:
