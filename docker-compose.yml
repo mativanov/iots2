@@ -59,6 +59,61 @@ services:
       timeout: 10s
       retries: 10
 
+  mqtt-ingestion-service:
+    build:
+      context: .
+      dockerfile: mqtt/ingestion-service/Dockerfile
+    container_name: mqtt-ingestion-service
+    environment:
+      MQTT_URL: ${MQTT_URL:-mqtt://mosquitto:1883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-iot/readings}
+      MQTT_QOS: ${MQTT_QOS:-0}
+      TOTAL_MESSAGES: ${TOTAL_MESSAGES:-100}
+      MESSAGES_PER_SECOND: ${MESSAGES_PER_SECOND:-10}
+      DEVICE_COUNT: ${DEVICE_COUNT:-10}
+      DATASET_PATH: ${DATASET_PATH:-}
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    restart: "no"
+
+  mqtt-storage-service:
+    build:
+      context: .
+      dockerfile: mqtt/storage-service/Dockerfile
+    container_name: mqtt-storage-service
+    environment:
+      MQTT_URL: ${MQTT_URL:-mqtt://mosquitto:1883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-iot/readings}
+      MQTT_QOS: ${MQTT_QOS:-2}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: iotdb
+      POSTGRES_USER: iotuser
+      POSTGRES_PASSWORD: iotpass
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mqtt-analytics-service:
+    build:
+      context: .
+      dockerfile: mqtt/analytics-service/Dockerfile
+    container_name: mqtt-analytics-service
+    environment:
+      MQTT_URL: ${MQTT_URL:-mqtt://mosquitto:1883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-iot/readings}
+      MQTT_QOS: ${MQTT_QOS:-2}
+      ALERT_THRESHOLD: ${ALERT_THRESHOLD:-50}
+      WINDOW_SECONDS: ${WINDOW_SECONDS:-10}
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   mosquitto_data:

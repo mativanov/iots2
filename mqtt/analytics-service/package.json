@@ -1,0 +1,17 @@
+{
+  "name": "@iot-event-brokers/mqtt-analytics-service",
+  "version": "0.1.0",
+  "description": "Consumes MQTT SensorReading events and logs tumbling-window temperature alerts.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
